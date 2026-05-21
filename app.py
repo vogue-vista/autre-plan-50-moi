@@ -1,14 +1,17 @@
 import streamlit as st
-import openai
+import streamlit.components.v1 as components
+from groq import Groq
 
 # -------------------------
 # CONFIGURATION DE LA PAGE
 # -------------------------
-st.set_page_config(page_title="ShortsScript IA", page_icon="🎬", layout="wide")
+st.set_page_config(page_title="ShortsScript IA Pro", page_icon="🎬", layout="wide")
 
-# Police Poppins pour le design pro
+# Masquer la sidebar par défaut pour un look épuré
 st.markdown("""
 <style>
+[data-testid="stSidebar"] {display: none !important;}
+[data-testid="stSidebarNav"] {display: none !important;}
 @import url('https://googleapis.com');
 html, body, div, p, h1, h2, h3, h4, h5, h6, span {
     font-family: 'Poppins', sans-serif !important;
@@ -17,85 +20,132 @@ html, body, div, p, h1, h2, h3, h4, h5, h6, span {
 """, unsafe_allow_html=True)
 
 # -------------------------
-# BARRE LATÉRALE : CONFIGURATION API
+# GESTION DE L'ACCÈS (SESSION STATE)
 # -------------------------
-with st.sidebar:
-    st.title("⚙️ Configuration")
-    api_key = st.text_input("Clé API OpenAI", type="password", help="Insérez votre clé OpenAI pour tester le script.")
-    st.info("💡 Pour la version finale payante, vous masquerez cette case et utiliserez vos propres variables d'environnement (st.secrets) pour facturer vos clients.")
+if "est_abonne" not in st.session_state:
+    st.session_state.est_abonne = False
+
+# Récupération sécurisée de la clé Groq depuis vos Secrets cachés
+try:
+    API_KEY = st.secrets["GROQ_API_KEY"]
+except:
+    API_KEY = "" # Vide par défaut si non configuré dans les secrets
 
 # -------------------------
-# CORPS DE LA PAGE
+# INTERFACE SÉCURISÉE
 # -------------------------
-st.title("🎬 ShortScript IA")
-st.subheader("Générez des scripts de vidéos courtes (TikTok, Reels, Shorts) à haute rétention.")
+st.title("🎬 ShortScript IA — Version Pro (Powered by Groq)")
 
-# Formulaire en une seule ligne/bloc
-with st.container(border=True):
-    col_input, col_style = st.columns([2, 1])
+# CAS 1 : L'UTILISATEUR N'A PAS PAYÉ
+if not st.session_state.est_abonne:
+    st.warning("🔒 Cette application est réservée aux membres de la version Premium.")
     
-    with col_input:
-        sujet = st.text_area("Quel est le sujet de votre vidéo ? (ou collez un article/idées brutes)", 
-                             placeholder="Ex: 3 astuces psychologiques pour vendre n'importe quel produit sans forcer...")
+    col_offre, col_connexion = st.columns(2, gap="large")
+    
+    with col_offre:
+        st.subheader("🚀 Débloquez l'IA pour 50 $/mois")
+        st.write("Obtenez un accès illimité au générateur de scripts vidéo à haute rétention pour TikTok, Reels et Shorts.")
+        st.write("Le paiement est entièrement sécurisé par **PayPal**.")
         
-    with col_style:
-        style = st.selectbox("Style de la vidéo", [
-            "🔥 Storytelling (Captivant / Émotion)", 
-            "🧠 Éducatif (Clair / Scientifique)", 
-            "⚡ Controverse / Avis tranché (Fort engagement)",
-            "🛠️ Tutoriel Rapide (Actionnable)"
-        ])
-        ton = st.selectbox("Ton de la voix", ["Énergique", "Mystérieux", "Professionnel", "Amical"])
+        # --- INTÉGRATION DU BOUTON D'ABONNEMENT PAYPAL ---
+        paypal_html = """
+        <div id="paypal-button-container-fixed" style="max-width: 350px; margin-top: 20px;"></div>
+        <script src="https://paypal.com" data-sdk-integration-source="button-factory"></script>
+        <script>
+          paypal.Buttons({
+              style: {
+                  shape: 'rect',
+                  color: 'gold',
+                  layout: 'vertical',
+                  label: 'subscribe'
+              },
+              createSubscription: function(data, actions) {
+                return actions.subscription.create({
+                  'plan_id': 'VOTRE_PLAN_ID_PAYPAL'
+                });
+              },
+              onApprove: function(data, actions) {
+                alert('Abonnement réussi ! ID : ' + data.subscriptionID);
+              }
+          }).render('#paypal-button-container-fixed');
+        </script>
+        """
+        components.html(paypal_html, height=350, scrolling=False)
+        
+    with col_connexion:
+        st.subheader("🔑 Déjà abonné ?")
+        st.write("Connectez-vous pour activer vos accès.")
+        email = st.text_input("Adresse e-mail")
+        mot_de_passe = st.text_input("Mot de passe", type="password")
+        
+        # Connexion de test (identifiants temporaires)
+        if st.button("Se connecter", use_container_width=True):
+            if email == "test@client.com" and mot_de_passe == "access50":
+                st.session_state.est_abonne = True
+                st.success("Accès accordé !")
+                st.rerun()
+            else:
+                st.error("Identifiants incorrects ou abonnement PayPal inactif.")
 
-    generer = st.button("🚀 Générer le Script Vidéo Pro", use_container_width=True)
+# CAS 2 : L'UTILISATEUR EST ABONNÉ -> ACCÈS COMPLET
+else:
+    st.write("✨ **Bienvenue dans votre espace Premium.** Votre abonnement est actif.")
+    if st.button("🚪 Se déconnecter", key="logout"):
+        st.session_state.est_abonne = False
+        st.rerun()
+        
+    st.write("---")
 
-# -------------------------
-# LOGIQUE GÉNÉRATION IA
-# -------------------------
-if generer:
-    if not api_key:
-        st.error("⚠️ Veuillez entrer votre clé API OpenAI dans la barre latérale pour tester.")
-    elif not sujet:
-        st.error("⚠️ Veuillez décrire le sujet de votre vidéo.")
-    else:
-        with st.spinner("L'IA analyse les algorithmes et rédige votre script..."):
-            try:
-                # Initialisation du client OpenAI
-                client = openai.OpenAI(api_key=api_key)
-                
-                # Prompt système ultra précis pour structurer la réponse de l'IA
-                prompt_systeme = """Tu es un expert mondial en ghostwriting et en création de vidéos courtes virales (TikTok, Instagram Reels, YouTube Shorts).
-                Ton but est d'écrire un script de moins de 60 secondes structuré de manière chirurgicale pour retenir l'attention.
-                
-                Tu dois obligatoirement formater ta réponse sous forme de tableau Markdown avec exactement 3 colonnes :
-                1. **Section** (ex: Hook (0-5s), Corps (5-45s), CTA (45-60s))
-                2. **Voix Off (Ce qu'il faut dire)** (Texte rythmé, phrases courtes, mots percutants)
-                3. **Visuel & B-Roll (Ce qu'il faut montrer)** (Instructions visuelles précises pour le montage : gros plan, texte à l'écran, transition rapide, etc.)
-                
-                Ne fais aucune introduction ni conclusion, commence directement par le tableau Markdown."""
+    # Formulaire de génération de l'application
+    with st.container(border=True):
+        col_input, col_style = st.columns()
+        
+        with col_input:
+            sujet = st.text_area("Quel est le sujet de votre vidéo ?", 
+                                 placeholder="Ex: 3 astuces de psychologie pour vendre...")
+            
+        with col_style:
+            style = st.selectbox("Style de la vidéo", [
+                "🔥 Storytelling (Captivant / Émotion)", 
+                "🧠 Éducatif (Clair / Scientifique)", 
+                "⚡ Controverse (Fort engagement)",
+                "🛠️ Tutoriel Rapide"
+            ])
+            ton = st.selectbox("Ton de la voix", ["Énergique", "Mystérieux", "Professionnel", "Amical"])
 
-                prompt_utilisateur = f"Rédige un script vidéo sur le sujet suivant : '{sujet}'.\nStyle : {style}\nTon : {ton}."
+        generer = st.button("🚀 Générer le Script Vidéo Pro", use_container_width=True)
 
-                # Appel à l'API OpenAI
-                reponse = client.chat.completions.create(
-                    model="gpt-4o-mini", # Modèle rapide et très économique
-                    messages=[
-                        {"role": "system", "content": prompt_systeme},
-                        {"role": "user", "content": prompt_utilisateur}
-                    ],
-                    temperature=0.7
-                )
-                
-                # Affichage du résultat
-                script_genere = reponse.choices[0].message.content
-                
-                st.success("✨ Votre script à haute rétention est prêt !")
-                
-                # Zone d'affichage du tableau
-                st.markdown(script_genere)
-                
-                # Option pratique pour le client
-                st.text_area("Copier le script brut :", value=script_genere, height=200)
+    if generer:
+        if not API_KEY:
+            st.error("⚠️ Erreur : La clé GROQ_API_KEY est manquante dans les Secrets du serveur.")
+        elif not sujet:
+            st.error("⚠️ Veuillez décrire le sujet de votre vidéo.")
+        else:
+            with st.spinner("L'IA ultra-rapide de Groq rédige votre script..."):
+                try:
+                    # Connexion au client Groq avec votre clé secrète
+                    client = Groq(api_key=API_KEY)
+                    
+                    prompt_systeme = """Tu es un expert mondial en création de vidéos courtes virales.
+                    Tu dois obligatoirement formater ta réponse sous forme de tableau Markdown avec exactement 3 colonnes :
+                    1. **Section** (ex: Hook (0-5s), Corps, CTA)
+                    2. **Voix Off (Ce qu'il faut dire)**
+                    3. **Visuel & B-Roll (Ce qu'il faut montrer)**
+                    Ne fais aucune intro ou conclusion, commence directement par le tableau."""
 
-            except Exception as e:
-                st.error(f"Une erreur est survenue avec l'API : {str(e)}")
+                    reponse = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile", # Modèle Groq extrêmement performant et rapide
+                        messages=[
+                            {"role": "system", "content": prompt_systeme},
+                            {"role": "user", "content": f"Sujet : '{sujet}'. Style : {style}. Ton : {ton}."}
+                        ],
+                        temperature=0.7
+                    )
+                    
+                    script_genere = reponse.choices[0].message.content
+                    st.success("✨ Votre script ultra-rapide est prêt !")
+                    st.markdown(script_genere)
+                    st.text_area("Copier le script brut :", value=script_genere, height=200)
+
+                except Exception as e:
+                    st.error(f"Erreur technique Groq : {str(e)}")
