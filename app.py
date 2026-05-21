@@ -20,21 +20,28 @@ html, body, div, p, h1, h2, h3, h4, h5, h6, span {
 """, unsafe_allow_html=True)
 
 # -------------------------
+# CONFIGURATION PAYPAL (À REMPLIR PLUS TARD)
+# -------------------------
+# Laissez "DEMO" pour afficher le bouton de redirection simple.
+# Dès que vous avez vos identifiants, remplacez-les ici :
+PAYPAL_CLIENT_ID = "DEMO"  # Mettez votre Client ID ici plus tard
+PAYPAL_PLAN_ID = "DEMO"    # Mettez votre Plan ID ici plus tard
+
+# -------------------------
 # GESTION DE L'ACCÈS (SESSION STATE)
 # -------------------------
 if "est_abonne" not in st.session_state:
     st.session_state.est_abonne = False
 
-# Récupération sécurisée de la clé Groq depuis vos Secrets cachés
 try:
     API_KEY = st.secrets["GROQ_API_KEY"]
 except:
-    API_KEY = "" # Vide par défaut si non configuré dans les secrets
+    API_KEY = ""
 
 # -------------------------
 # INTERFACE SÉCURISÉE
 # -------------------------
-st.title("🎬 ShortScript IA — Version Pro (Powered by Groq)")
+st.title("🎬 ShortScript IA — Version Pro")
 
 # CAS 1 : L'UTILISATEUR N'A PAS PAYÉ
 if not st.session_state.est_abonne:
@@ -47,30 +54,37 @@ if not st.session_state.est_abonne:
         st.write("Obtenez un accès illimité au générateur de scripts vidéo à haute rétention pour TikTok, Reels et Shorts.")
         st.write("Le paiement est entièrement sécurisé par **PayPal**.")
         
-        # --- INTÉGRATION DU BOUTON D'ABONNEMENT PAYPAL ---
-        paypal_html = """
-        <div id="paypal-button-container-fixed" style="max-width: 350px; margin-top: 20px;"></div>
-        <script src="https://paypal.com" data-sdk-integration-source="button-factory"></script>
-        <script>
-          paypal.Buttons({
-              style: {
-                  shape: 'rect',
-                  color: 'gold',
-                  layout: 'vertical',
-                  label: 'subscribe'
-              },
-              createSubscription: function(data, actions) {
-                return actions.subscription.create({
-                  'plan_id': 'VOTRE_PLAN_ID_PAYPAL'
-                });
-              },
-              onApprove: function(data, actions) {
-                alert('Abonnement réussi ! ID : ' + data.subscriptionID);
-              }
-          }).render('#paypal-button-container-fixed');
-        </script>
-        """
-        components.html(paypal_html, height=350, scrolling=False)
+        # Logique d'affichage automatique du bouton PayPal
+        if PAYPAL_CLIENT_ID == "DEMO":
+            # CODE DE REDIRECTION TEMPORAIRE : Un beau bouton jaune cliquable
+            paypal_html = """
+            <a href="https://paypal.com" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #ffc439; color: #003087; text-align: center; 
+                            padding: 12px; font-family: Arial, sans-serif; font-weight: bold; 
+                            border-radius: 4px; max-width: 300px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    🟨 S'abonner avec PayPal (Démo)
+                </div>
+            </a>
+            """
+        else:
+            # VRAI CODE DE L'ABONNEMENT PAYPAL AUTOMATIQUE (S'activera dès que vous changerez les variables)
+            paypal_html = f"""
+            <div id="paypal-button-container-fixed" style="max-width: 350px; margin-top: 20px;"></div>
+            <script src="https://paypal.com/sdk/js?client-id={PAYPAL_CLIENT_ID}&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
+            <script>
+              paypal.Buttons({{
+                  style: {{ shape: 'rect', color: 'gold', layout: 'vertical', label: 'subscribe' }},
+                  createSubscription: function(data, actions) {{
+                    return actions.subscription.create({{ 'plan_id': '{PAYPAL_PLAN_ID}' }});
+                  }},
+                  onApprove: function(data, actions) {{
+                    alert('Abonnement réussi ! ID : ' + data.subscriptionID);
+                  }}
+              }}).render('#paypal-button-container-fixed');
+            </script>
+            """
+        
+        components.html(paypal_html, height=150, scrolling=False)
         
     with col_connexion:
         st.subheader("🔑 Déjà abonné ?")
@@ -78,7 +92,6 @@ if not st.session_state.est_abonne:
         email = st.text_input("Adresse e-mail")
         mot_de_passe = st.text_input("Mot de passe", type="password")
         
-        # Connexion de test (identifiants temporaires)
         if st.button("Se connecter", use_container_width=True):
             if email == "test@client.com" and mot_de_passe == "access50":
                 st.session_state.est_abonne = True
@@ -96,7 +109,6 @@ else:
         
     st.write("---")
 
-    # Formulaire de génération de l'application
     with st.container(border=True):
         col_input, col_style = st.columns()
         
@@ -123,18 +135,17 @@ else:
         else:
             with st.spinner("L'IA ultra-rapide de Groq rédige votre script..."):
                 try:
-                    # Connexion au client Groq avec votre clé secrète
                     client = Groq(api_key=API_KEY)
                     
                     prompt_systeme = """Tu es un expert mondial en création de vidéos courtes virales.
-                    Tu dois obligatoirement formater ta réponse sous forme de tableau Markdown avec exactement 3 colonnes :
+                    Tu devez obligatoirement formater votre réponse sous forme de tableau Markdown avec exactement 3 colonnes :
                     1. **Section** (ex: Hook (0-5s), Corps, CTA)
                     2. **Voix Off (Ce qu'il faut dire)**
                     3. **Visuel & B-Roll (Ce qu'il faut montrer)**
-                    Ne fais aucune intro ou conclusion, commence directement par le tableau."""
+                    Ne fais aucune intro ou conclusion."""
 
                     reponse = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile", # Modèle Groq extrêmement performant et rapide
+                        model="llama-3.3-70b-versatile",
                         messages=[
                             {"role": "system", "content": prompt_systeme},
                             {"role": "user", "content": f"Sujet : '{sujet}'. Style : {style}. Ton : {ton}."}
@@ -142,7 +153,7 @@ else:
                         temperature=0.7
                     )
                     
-                    script_genere = reponse.choices[0].message.content
+                    script_genere = reponse.choices.message.content
                     st.success("✨ Votre script ultra-rapide est prêt !")
                     st.markdown(script_genere)
                     st.text_area("Copier le script brut :", value=script_genere, height=200)
