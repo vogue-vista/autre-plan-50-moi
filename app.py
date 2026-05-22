@@ -22,8 +22,6 @@ html, body, div, p, h1, h2, h3, h4, h5, h6, span {
 # -------------------------
 # CONFIGURATION PAYPAL (À REMPLIR PLUS TARD)
 # -------------------------
-# Laissez "DEMO" pour afficher le bouton de redirection simple.
-# Dès que vous avez vos identifiants, remplacez-les ici :
 PAYPAL_CLIENT_ID = "DEMO"  # Mettez votre Client ID ici plus tard
 PAYPAL_PLAN_ID = "DEMO"    # Mettez votre Plan ID ici plus tard
 
@@ -47,6 +45,7 @@ st.title("🎬 ShortScript IA — Version Pro")
 if not st.session_state.est_abonne:
     st.warning("🔒 Cette application est réservée aux membres de la version Premium.")
     
+    # Correction ici : Ajout du chiffre 2 pour spécifier le nombre de colonnes
     col_offre, col_connexion = st.columns(2, gap="large")
     
     with col_offre:
@@ -54,9 +53,7 @@ if not st.session_state.est_abonne:
         st.write("Obtenez un accès illimité au générateur de scripts vidéo à haute rétention pour TikTok, Reels et Shorts.")
         st.write("Le paiement est entièrement sécurisé par **PayPal**.")
         
-        # Logique d'affichage automatique du bouton PayPal
         if PAYPAL_CLIENT_ID == "DEMO":
-            # CODE DE REDIRECTION TEMPORAIRE : Un beau bouton jaune cliquable
             paypal_html = """
             <a href="https://paypal.com" target="_blank" style="text-decoration: none;">
                 <div style="background-color: #ffc439; color: #003087; text-align: center; 
@@ -67,7 +64,6 @@ if not st.session_state.est_abonne:
             </a>
             """
         else:
-            # VRAI CODE DE L'ABONNEMENT PAYPAL AUTOMATIQUE (S'activera dès que vous changerez les variables)
             paypal_html = f"""
             <div id="paypal-button-container-fixed" style="max-width: 350px; margin-top: 20px;"></div>
             <script src="https://paypal.com/sdk/js?client-id={PAYPAL_CLIENT_ID}&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
@@ -110,7 +106,8 @@ else:
     st.write("---")
 
     with st.container(border=True):
-        col_input, col_style = st.columns()
+        # Correction ici : Ajout du chiffre 2 pour spécifier deux colonnes égales
+        col_input, col_style = st.columns(2)
         
         with col_input:
             sujet = st.text_area("Quel est le sujet de votre vidéo ?", 
