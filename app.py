@@ -45,7 +45,6 @@ st.title("🎬 ShortScript IA — Version Pro")
 if not st.session_state.est_abonne:
     st.warning("🔒 Cette application est réservée aux membres de la version Premium.")
     
-    # Correction ici : Ajout du chiffre 2 pour spécifier le nombre de colonnes
     col_offre, col_connexion = st.columns(2, gap="large")
     
     with col_offre:
@@ -106,7 +105,6 @@ else:
     st.write("---")
 
     with st.container(border=True):
-        # Correction ici : Ajout du chiffre 2 pour spécifier deux colonnes égales
         col_input, col_style = st.columns(2)
         
         with col_input:
@@ -135,7 +133,7 @@ else:
                     client = Groq(api_key=API_KEY)
                     
                     prompt_systeme = """Tu es un expert mondial en création de vidéos courtes virales.
-                    Tu devez obligatoirement formater votre réponse sous forme de tableau Markdown avec exactement 3 colonnes :
+                    Tu dois obligatoirement formater ta réponse sous forme de tableau Markdown avec exactement 3 colonnes :
                     1. **Section** (ex: Hook (0-5s), Corps, CTA)
                     2. **Voix Off (Ce qu'il faut dire)**
                     3. **Visuel & B-Roll (Ce qu'il faut montrer)**
@@ -150,7 +148,8 @@ else:
                         temperature=0.7
                     )
                     
-                    script_genere = reponse.choices.message.content
+                    # CORRECTION ICI : Ajout de [0] pour cibler le premier élément de la liste choices
+                    script_genere = reponse.choices[0].message.content
                     st.success("✨ Votre script ultra-rapide est prêt !")
                     st.markdown(script_genere)
                     st.text_area("Copier le script brut :", value=script_genere, height=200)
